@@ -1,0 +1,22 @@
+{
+  "name": "Portal Resmi P2UWM Bumi Pratama Mandira",
+  "short_name": "P2UWM Mandira",
+  "description": "Pusat transparansi, koordinasi, sistem manajemen konten (CMS), analitik real-time, dan aspirasi petambak udang Desa Bumi Pratama Mandira, Sungai Menang, OKI, Sumatera Selatan.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#071318",
+  "theme_color": "#0F766E",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/assets/aistudio/logo_P2UWM_4dcdd383.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/aistudio/logo_P2UWM_4dcdd383.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

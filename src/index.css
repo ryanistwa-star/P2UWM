@@ -1,0 +1,190 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  body {
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   LUXURY MULTI-COLOR AURORA & SPECULAR EFFECTS (Compositor-Safe)
+   ========================================================================== */
+
+@keyframes luxuryShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.luxury-shimmer-text {
+  background-image: linear-gradient(
+    115deg,
+    #047857 0%,
+    #0d9488 26%,
+    #d97706 52%,
+    #0891b2 78%,
+    #059669 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: luxuryShimmer 9s ease-in-out infinite;
+}
+
+.dark .luxury-shimmer-text {
+  background-image: linear-gradient(
+    115deg,
+    #34d399 0%,
+    #2dd4bf 25%,
+    #fbbf24 52%,
+    #38bdf8 78%,
+    #6ee7b7 100%
+  );
+}
+
+.luxury-sheen-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-sheen-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%) skewX(-18deg);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 100%
+  );
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.luxury-sheen-btn:hover::after {
+  transform: translateX(120%) skewX(-18deg);
+}
+
+.luxury-aurora-hero {
+  background-color: #f8fafc;
+  background-image:
+    radial-gradient(at 8% 12%, rgba(16, 185, 129, 0.16) 0px, transparent 48%),
+    radial-gradient(at 88% 15%, rgba(245, 158, 11, 0.15) 0px, transparent 46%),
+    radial-gradient(at 72% 82%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+    radial-gradient(at 24% 88%, rgba(99, 102, 241, 0.08) 0px, transparent 45%);
+}
+
+.dark .luxury-aurora-hero {
+  background-color: #051116;
+  background-image:
+    radial-gradient(at 10% 14%, rgba(16, 185, 129, 0.22) 0px, transparent 50%),
+    radial-gradient(at 88% 16%, rgba(245, 158, 11, 0.16) 0px, transparent 46%),
+    radial-gradient(at 76% 84%, rgba(6, 182, 212, 0.20) 0px, transparent 52%),
+    radial-gradient(at 20% 85%, rgba(99, 102, 241, 0.14) 0px, transparent 48%);
+}
+
+.luxury-aurora-section {
+  background-image:
+    radial-gradient(at 95% 8%, rgba(20, 184, 166, 0.09) 0px, transparent 45%),
+    radial-gradient(at 5% 92%, rgba(245, 158, 11, 0.08) 0px, transparent 45%);
+}
+
+.dark .luxury-aurora-section {
+  background-image:
+    radial-gradient(at 92% 10%, rgba(20, 184, 166, 0.14) 0px, transparent 48%),
+    radial-gradient(at 8% 90%, rgba(245, 158, 11, 0.10) 0px, transparent 48%);
+}
+
+.luxury-grid-pattern {
+  background-size: 36px 36px;
+  background-image:
+    linear-gradient(to right, rgba(15, 118, 110, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 118, 110, 0.05) 1px, transparent 1px);
+}
+
+.dark .luxury-grid-pattern {
+  background-image:
+    linear-gradient(to right, rgba(45, 212, 191, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(45, 212, 191, 0.06) 1px, transparent 1px);
+}
+
+.luxury-spotlight-surface {
+  position: relative;
+}
+
+.luxury-spotlight-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    420px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(20, 184, 166, 0.13),
+    rgba(245, 158, 11, 0.06) 40%,
+    transparent 75%
+  );
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dark .luxury-spotlight-surface::before {
+  background: radial-gradient(
+    440px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(45, 212, 191, 0.18),
+    rgba(251, 191, 36, 0.09) 42%,
+    transparent 75%
+  );
+}
+
+.luxury-spotlight-surface:hover::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .luxury-shimmer-text {
+    animation: none;
+  }
+  .luxury-sheen-btn::after {
+    transition: none;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+}

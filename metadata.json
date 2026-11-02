@@ -1,0 +1,8 @@
+{
+  "name": "P2UWM Bumi Pratama Mandira",
+  "description": "Pusat transparansi, koordinasi, sistem manajemen konten (CMS), analitik real-time, dan aspirasi petambak udang Desa Bumi Pratama Mandira, Sungai Menang, OKI, Sumatera Selatan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

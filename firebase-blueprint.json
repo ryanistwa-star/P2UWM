@@ -1,0 +1,835 @@
+{
+  "entities": {
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Trusted RBAC administrator role entry managed by the bootstrapped super administrator.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the delegated administrator."
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160,
+          "description": "Verified Google account email address."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Full display name of the administrator."
+        },
+        "roleTitle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Organizational title in P2UWM."
+        },
+        "addedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID of the bootstrapped admin who granted access."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of role creation."
+        }
+      },
+      "required": ["uid", "email", "name", "roleTitle", "addedBy", "createdAt"]
+    },
+    "RegisteredAccount": {
+      "title": "RegisteredAccount",
+      "description": "Whitelisted email account authorized to sign in to the P2UWM portal as administrator or registered member.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 160,
+          "pattern": "^[a-z0-9._%+\\-]+@[a-z0-9.\\-]+\\.[a-z]{2,}$",
+          "description": "Normalized lowercase Google account email address."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Full display name of the registered user."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "member"],
+          "description": "Access level: admin (full CMS/dashboard) or member (verified farmer portal)."
+        },
+        "roleTitle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Organizational position or pond block designation."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether this account is currently permitted to log in."
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["p2uwm_auth"],
+          "description": "Constant scope tag for cost-optimized admin list queries."
+        },
+        "addedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID of the super administrator who registered the account."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when account was registered."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when account status or role was updated."
+        }
+      },
+      "required": [
+        "email",
+        "name",
+        "role",
+        "roleTitle",
+        "active",
+        "scope",
+        "addedBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SiteSetting": {
+      "title": "SiteSetting",
+      "description": "Singleton organization profile, vision-mission, history, and chairman greeting for P2UWM.",
+      "type": "object",
+      "properties": {
+        "orgName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Full organization name."
+        },
+        "orgShortName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 30,
+          "description": "Short acronym of the organization."
+        },
+        "tagline": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 240,
+          "description": "Hero value proposition."
+        },
+        "locationText": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200,
+          "description": "Official geographical location in OKI, South Sumatra."
+        },
+        "vision": {
+          "type": "string",
+          "minLength": 15,
+          "maxLength": 800,
+          "description": "Main vision statement."
+        },
+        "missionList": {
+          "type": "array",
+          "description": "List of core organizational missions (bounded up to 8 items)."
+        },
+        "historyText": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 2500,
+          "description": "Historical background and mandate of P2UWM."
+        },
+        "chairmanName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Name of P2UWM Chairman."
+        },
+        "chairmanTitle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Official title of Chairman."
+        },
+        "chairmanQuote": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 1200,
+          "description": "Welcome message from the Chairman."
+        },
+        "totalMembers": {
+          "type": "integer",
+          "description": "Active farmer members count."
+        },
+        "totalPonds": {
+          "type": "integer",
+          "description": "Total active shrimp ponds in the zone."
+        },
+        "activeBlocks": {
+          "type": "integer",
+          "description": "Number of managed aquaculture canal blocks."
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID of the administrator who last updated settings."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of update."
+        }
+      },
+      "required": [
+        "orgName",
+        "orgShortName",
+        "tagline",
+        "locationText",
+        "vision",
+        "missionList",
+        "historyText",
+        "chairmanName",
+        "chairmanTitle",
+        "chairmanQuote",
+        "totalMembers",
+        "totalPonds",
+        "activeBlocks",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "BoardMember": {
+      "title": "BoardMember",
+      "description": "Central executive board member of P2UWM.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "position": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "division": {
+          "type": "string",
+          "enum": [
+            "Inti",
+            "Badan Pengawas",
+            "Demisioner",
+            "Keanggotaan & Sosial",
+            "Humas & Advokasi",
+            "Ekonomi & Usaha",
+            "Teknis Budidaya",
+            "Infrastruktur Kawasan"
+          ]
+        },
+        "bio": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 500
+        },
+        "orderIndex": {
+          "type": "integer"
+        },
+        "photoKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["published", "archived"]
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "name",
+        "position",
+        "division",
+        "bio",
+        "orderIndex",
+        "photoKey",
+        "status",
+        "authorId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WorkProgram": {
+      "title": "WorkProgram",
+      "description": "Strategic work program across the 5 core divisions of P2UWM.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 20
+        },
+        "title": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "fieldCategory": {
+          "type": "string",
+          "enum": [
+            "Keanggotaan, Sosial, & Keagamaan",
+            "Humas, Komunikasi, & Advokasi",
+            "Penguatan Ekonomi & Usaha Anggota",
+            "Pendampingan Teknis Budidaya & Kesehatan Udang",
+            "Infrastruktur & Pengelolaan Kawasan Pertambakan"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 400
+        },
+        "details": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 2500
+        },
+        "highlights": {
+          "type": "array",
+          "description": "Key deliverables list (max 8 strings)."
+        },
+        "progressPercent": {
+          "type": "integer"
+        },
+        "targetMetric": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "imageKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "orderIndex": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["published", "draft"]
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "code",
+        "title",
+        "fieldCategory",
+        "summary",
+        "details",
+        "highlights",
+        "progressPercent",
+        "targetMetric",
+        "imageKey",
+        "orderIndex",
+        "status",
+        "authorId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Visual documentation of physical infrastructure and aquaculture activities.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 160
+        },
+        "caption": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 600
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Infrastruktur",
+            "Budidaya & Teknis",
+            "Musyawarah & Organisasi",
+            "Sosial & Ekonomi"
+          ]
+        },
+        "locationBlock": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "eventDate": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 40
+        },
+        "imageUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["published", "draft"]
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "title",
+        "caption",
+        "category",
+        "locationBlock",
+        "eventDate",
+        "imageUrl",
+        "status",
+        "authorId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "NewsArticle": {
+      "title": "NewsArticle",
+      "description": "News, organizational achievements, and member announcements.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 180
+        },
+        "excerpt": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 360
+        },
+        "content": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 8000
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Pengumuman",
+            "Infrastruktur",
+            "Budidaya Udang",
+            "Kegiatan Organisasi",
+            "Ekonomi Tambak"
+          ]
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "publishDate": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 40
+        },
+        "readMinutes": {
+          "type": "integer"
+        },
+        "imageUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "featured": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["published", "draft"]
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "title",
+        "excerpt",
+        "content",
+        "category",
+        "authorName",
+        "publishDate",
+        "readMinutes",
+        "imageUrl",
+        "featured",
+        "status",
+        "authorId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Aspiration": {
+      "title": "Aspiration",
+      "description": "Operational member aspiration record separated from contact PII.",
+      "type": "object",
+      "properties": {
+        "senderName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "pondBlock": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Infrastruktur & Kanal",
+            "Kesehatan Udang & Teknis",
+            "Ekonomi & Koperasi",
+            "Keanggotaan & Sosial",
+            "Advokasi & Kebijakan"
+          ]
+        },
+        "urgency": {
+          "type": "string",
+          "enum": ["Normal", "Penting", "Mendesak"]
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "message": {
+          "type": "string",
+          "minLength": 15,
+          "maxLength": 2500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Diajukan", "Ditinjau", "Ditindaklanjuti", "Selesai"]
+        },
+        "adminResponse": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1500
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "senderName",
+        "pondBlock",
+        "category",
+        "urgency",
+        "subject",
+        "message",
+        "status",
+        "adminResponse",
+        "authorId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AspirationPii": {
+      "title": "AspirationPii",
+      "description": "Isolated PII contact vault linked 1:1 with an Aspiration document.",
+      "type": "object",
+      "properties": {
+        "aspirationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 30
+        },
+        "memberIdCode": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["aspirationId", "authorId", "email", "phone", "memberIdCode", "createdAt"]
+    },
+    "AnalyticsDaily": {
+      "title": "AnalyticsDaily",
+      "description": "Real-time daily traffic and section engagement telemetry.",
+      "type": "object",
+      "properties": {
+        "dateKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 20,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 30
+        },
+        "visitors": {
+          "type": "integer"
+        },
+        "pageViews": {
+          "type": "integer"
+        },
+        "mobileUsers": {
+          "type": "integer"
+        },
+        "desktopUsers": {
+          "type": "integer"
+        },
+        "berandaViews": {
+          "type": "integer"
+        },
+        "profilViews": {
+          "type": "integer"
+        },
+        "programViews": {
+          "type": "integer"
+        },
+        "galeriViews": {
+          "type": "integer"
+        },
+        "beritaViews": {
+          "type": "integer"
+        },
+        "aspirasiViews": {
+          "type": "integer"
+        },
+        "ownerScope": {
+          "type": "string",
+          "enum": ["p2uwm_analytics"]
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "dateKey",
+        "label",
+        "visitors",
+        "pageViews",
+        "mobileUsers",
+        "desktopUsers",
+        "berandaViews",
+        "profilViews",
+        "programViews",
+        "galeriViews",
+        "beritaViews",
+        "aspirasiViews",
+        "ownerScope",
+        "updatedAt"
+      ]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable append-only security and CMS activity audit log.",
+      "type": "object",
+      "properties": {
+        "actorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "actorEmail": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "CREATE",
+            "UPDATE",
+            "DELETE",
+            "STATUS_CHANGE",
+            "SECURITY_CHECK",
+            "SEED_DATA"
+          ]
+        },
+        "targetCollection": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 300
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["INFO", "WARNING", "CRITICAL"]
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["p2uwm_audit"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "actorUid",
+        "actorEmail",
+        "action",
+        "targetCollection",
+        "targetId",
+        "summary",
+        "severity",
+        "scope",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminUid}": {
+      "schema": "AdminRole",
+      "description": "RBAC registry of authorized P2UWM administrators."
+    },
+    "/registered_accounts/{emailKey}": {
+      "schema": "RegisteredAccount",
+      "description": "Whitelisted email accounts permitted to sign in as administrators or registered members."
+    },
+    "/site_settings/{settingId}": {
+      "schema": "SiteSetting",
+      "description": "Singleton organization identity and profile configuration."
+    },
+    "/board_members/{memberId}": {
+      "schema": "BoardMember",
+      "description": "Central executive board members of P2UWM."
+    },
+    "/programs/{programId}": {
+      "schema": "WorkProgram",
+      "description": "Strategic work programs across the 5 core divisions."
+    },
+    "/gallery_items/{itemId}": {
+      "schema": "GalleryItem",
+      "description": "Visual gallery of infrastructure and shrimp farming operations."
+    },
+    "/articles/{articleId}": {
+      "schema": "NewsArticle",
+      "description": "News, announcements, and activity transparency records."
+    },
+    "/aspirations/{aspirationId}": {
+      "schema": "Aspiration",
+      "description": "Member aspirations without direct PII contact fields."
+    },
+    "/aspirations_pii/{aspirationId}": {
+      "schema": "AspirationPii",
+      "description": "Isolated PII contact vault linked atomically to aspirations."
+    },
+    "/analytics_daily/{dateKey}": {
+      "schema": "AnalyticsDaily",
+      "description": "Daily real-time visitor traffic and section engagement metrics."
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable append-only security and CMS audit trail."
+    }
+  }
+}

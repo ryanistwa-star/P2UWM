@@ -1,0 +1,749 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Hardened Global Primitives
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidEmailKey(emailKey) {
+      return emailKey is string &&
+        emailKey.size() >= 5 &&
+        emailKey.size() <= 160 &&
+        emailKey.matches('^[a-z0-9._%+\\-]+@[a-z0-9.\\-]+\\.[a-z]{2,}$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() &&
+        request.auth.token.email is string &&
+        request.auth.token.email.lower() == 'adryanbejo@gmail.com';
+    }
+
+    function isRegisteredUser() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() && (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+          (
+            request.auth.token.email is string &&
+            exists(/databases/$(database)/documents/registered_accounts/$(request.auth.token.email.lower())) &&
+            get(/databases/$(database)/documents/registered_accounts/$(request.auth.token.email.lower())).data.active == true
+          )
+        )
+      );
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() && (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+          (
+            request.auth.token.email is string &&
+            exists(/databases/$(database)/documents/registered_accounts/$(request.auth.token.email.lower())) &&
+            get(/databases/$(database)/documents/registered_accounts/$(request.auth.token.email.lower())).data.active == true &&
+            get(/databases/$(database)/documents/registered_accounts/$(request.auth.token.email.lower())).data.role == 'admin'
+          )
+        )
+      );
+    }
+
+    function isBoundedStringList(arr, minItems, maxItems, maxItemLen) {
+      return arr is list &&
+        arr.size() >= minItems &&
+        arr.size() <= maxItems &&
+        (arr.size() == 0 || (arr[0] is string && arr[0].size() >= 1 && arr[0].size() <= maxItemLen));
+    }
+
+    function isStepIncrement(nextVal, prevVal) {
+      return nextVal >= prevVal && nextVal <= prevVal + 1;
+    }
+
+    // =========================================================================
+    // Entity Validation Blueprints (Anti-Update-Gap)
+    // =========================================================================
+    function isValidAdminRole(data) {
+      return data.keys().hasAll(['uid', 'email', 'name', 'roleTitle', 'addedBy', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'name', 'roleTitle', 'addedBy', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+        data.roleTitle is string && data.roleTitle.size() >= 2 && data.roleTitle.size() <= 80 &&
+        isValidId(data.addedBy) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidRegisteredAccount(data) {
+      return data.keys().hasAll([
+          'email', 'name', 'role', 'roleTitle', 'active',
+          'scope', 'addedBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'email', 'name', 'role', 'roleTitle', 'active',
+          'scope', 'addedBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidEmailKey(data.email) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+        data.role is string && data.role.size() <= 20 && data.role in ['admin', 'member'] &&
+        data.roleTitle is string && data.roleTitle.size() >= 2 && data.roleTitle.size() <= 80 &&
+        data.active is bool &&
+        data.scope is string && data.scope.size() <= 20 && data.scope == 'p2uwm_auth' &&
+        isValidId(data.addedBy) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSiteSetting(data) {
+      return data.keys().hasAll([
+          'orgName', 'orgShortName', 'tagline', 'locationText', 'vision',
+          'missionList', 'historyText', 'chairmanName', 'chairmanTitle',
+          'chairmanQuote', 'totalMembers', 'totalPonds', 'activeBlocks',
+          'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'orgName', 'orgShortName', 'tagline', 'locationText', 'vision',
+          'missionList', 'historyText', 'chairmanName', 'chairmanTitle',
+          'chairmanQuote', 'totalMembers', 'totalPonds', 'activeBlocks',
+          'updatedBy', 'updatedAt'
+        ]) &&
+        data.orgName is string && data.orgName.size() >= 3 && data.orgName.size() <= 120 &&
+        data.orgShortName is string && data.orgShortName.size() >= 2 && data.orgShortName.size() <= 30 &&
+        data.tagline is string && data.tagline.size() >= 10 && data.tagline.size() <= 240 &&
+        data.locationText is string && data.locationText.size() >= 10 && data.locationText.size() <= 200 &&
+        data.vision is string && data.vision.size() >= 15 && data.vision.size() <= 800 &&
+        isBoundedStringList(data.missionList, 1, 8, 300) &&
+        data.historyText is string && data.historyText.size() >= 20 && data.historyText.size() <= 2500 &&
+        data.chairmanName is string && data.chairmanName.size() >= 2 && data.chairmanName.size() <= 100 &&
+        data.chairmanTitle is string && data.chairmanTitle.size() >= 2 && data.chairmanTitle.size() <= 100 &&
+        data.chairmanQuote is string && data.chairmanQuote.size() >= 20 && data.chairmanQuote.size() <= 1200 &&
+        data.totalMembers is int && data.totalMembers >= 0 && data.totalMembers <= 1000000 &&
+        data.totalPonds is int && data.totalPonds >= 0 && data.totalPonds <= 1000000 &&
+        data.activeBlocks is int && data.activeBlocks >= 0 && data.activeBlocks <= 1000 &&
+        isValidId(data.updatedBy) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBoardMember(data) {
+      return data.keys().hasAll([
+          'name', 'position', 'division', 'bio', 'orderIndex',
+          'photoKey', 'status', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'name', 'position', 'division', 'bio', 'orderIndex',
+          'photoKey', 'status', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+        data.position is string && data.position.size() >= 2 && data.position.size() <= 100 &&
+        data.division is string && data.division.size() <= 40 &&
+        data.division in [
+          'Inti',
+          'Badan Pengawas',
+          'Demisioner',
+          'Keanggotaan & Sosial',
+          'Humas & Advokasi',
+          'Ekonomi & Usaha',
+          'Teknis Budidaya',
+          'Infrastruktur Kawasan'
+        ] &&
+        data.bio is string && data.bio.size() >= 5 && data.bio.size() <= 500 &&
+        data.orderIndex is int && data.orderIndex >= 1 && data.orderIndex <= 100 &&
+        data.photoKey is string && data.photoKey.size() >= 1 && data.photoKey.size() <= 500 &&
+        data.status is string && data.status.size() <= 20 && data.status in ['published', 'archived'] &&
+        isValidId(data.authorId) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidWorkProgram(data) {
+      return data.keys().hasAll([
+          'code', 'title', 'fieldCategory', 'summary', 'details', 'highlights',
+          'progressPercent', 'targetMetric', 'imageKey', 'orderIndex',
+          'status', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'code', 'title', 'fieldCategory', 'summary', 'details', 'highlights',
+          'progressPercent', 'targetMetric', 'imageKey', 'orderIndex',
+          'status', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.code is string && data.code.size() >= 2 && data.code.size() <= 20 &&
+        data.title is string && data.title.size() >= 5 && data.title.size() <= 160 &&
+        data.fieldCategory is string && data.fieldCategory.size() <= 80 &&
+        data.fieldCategory in [
+          'Keanggotaan, Sosial, & Keagamaan',
+          'Humas, Komunikasi, & Advokasi',
+          'Penguatan Ekonomi & Usaha Anggota',
+          'Pendampingan Teknis Budidaya & Kesehatan Udang',
+          'Infrastruktur & Pengelolaan Kawasan Pertambakan'
+        ] &&
+        data.summary is string && data.summary.size() >= 10 && data.summary.size() <= 400 &&
+        data.details is string && data.details.size() >= 10 && data.details.size() <= 2500 &&
+        isBoundedStringList(data.highlights, 1, 8, 200) &&
+        data.progressPercent is int && data.progressPercent >= 0 && data.progressPercent <= 100 &&
+        data.targetMetric is string && data.targetMetric.size() >= 2 && data.targetMetric.size() <= 120 &&
+        data.imageKey is string && data.imageKey.size() >= 1 && data.imageKey.size() <= 300 &&
+        data.orderIndex is int && data.orderIndex >= 1 && data.orderIndex <= 50 &&
+        data.status is string && data.status.size() <= 20 && data.status in ['published', 'draft'] &&
+        isValidId(data.authorId) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll([
+          'title', 'caption', 'category', 'locationBlock', 'eventDate',
+          'imageUrl', 'status', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'title', 'caption', 'category', 'locationBlock', 'eventDate',
+          'imageUrl', 'status', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 4 && data.title.size() <= 160 &&
+        data.caption is string && data.caption.size() >= 10 && data.caption.size() <= 600 &&
+        data.category is string && data.category.size() <= 40 &&
+        data.category in [
+          'Infrastruktur',
+          'Budidaya & Teknis',
+          'Musyawarah & Organisasi',
+          'Sosial & Ekonomi'
+        ] &&
+        data.locationBlock is string && data.locationBlock.size() >= 2 && data.locationBlock.size() <= 80 &&
+        data.eventDate is string && data.eventDate.size() >= 4 && data.eventDate.size() <= 40 &&
+        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 500 &&
+        data.status is string && data.status.size() <= 20 && data.status in ['published', 'draft'] &&
+        isValidId(data.authorId) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidNewsArticle(data) {
+      return data.keys().hasAll([
+          'title', 'excerpt', 'content', 'category', 'authorName',
+          'publishDate', 'readMinutes', 'imageUrl', 'featured',
+          'status', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'title', 'excerpt', 'content', 'category', 'authorName',
+          'publishDate', 'readMinutes', 'imageUrl', 'featured',
+          'status', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 5 && data.title.size() <= 180 &&
+        data.excerpt is string && data.excerpt.size() >= 10 && data.excerpt.size() <= 360 &&
+        data.content is string && data.content.size() >= 20 && data.content.size() <= 8000 &&
+        data.category is string && data.category.size() <= 40 &&
+        data.category in [
+          'Pengumuman',
+          'Infrastruktur',
+          'Budidaya Udang',
+          'Kegiatan Organisasi',
+          'Ekonomi Tambak'
+        ] &&
+        data.authorName is string && data.authorName.size() >= 2 && data.authorName.size() <= 100 &&
+        data.publishDate is string && data.publishDate.size() >= 4 && data.publishDate.size() <= 40 &&
+        data.readMinutes is int && data.readMinutes >= 1 && data.readMinutes <= 60 &&
+        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 500 &&
+        data.featured is bool &&
+        data.status is string && data.status.size() <= 20 && data.status in ['published', 'draft'] &&
+        isValidId(data.authorId) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAspiration(data) {
+      return data.keys().hasAll([
+          'senderName', 'pondBlock', 'category', 'urgency', 'subject',
+          'message', 'status', 'adminResponse', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'senderName', 'pondBlock', 'category', 'urgency', 'subject',
+          'message', 'status', 'adminResponse', 'authorId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.senderName is string && data.senderName.size() >= 2 && data.senderName.size() <= 100 &&
+        data.pondBlock is string && data.pondBlock.size() >= 2 && data.pondBlock.size() <= 60 &&
+        data.category is string && data.category.size() <= 40 &&
+        data.category in [
+          'Infrastruktur & Kanal',
+          'Kesehatan Udang & Teknis',
+          'Ekonomi & Koperasi',
+          'Keanggotaan & Sosial',
+          'Advokasi & Kebijakan'
+        ] &&
+        data.urgency is string && data.urgency.size() <= 20 &&
+        data.urgency in ['Normal', 'Penting', 'Mendesak'] &&
+        data.subject is string && data.subject.size() >= 5 && data.subject.size() <= 160 &&
+        data.message is string && data.message.size() >= 15 && data.message.size() <= 2500 &&
+        data.status is string && data.status.size() <= 25 &&
+        data.status in ['Diajukan', 'Ditinjau', 'Ditindaklanjuti', 'Selesai'] &&
+        data.adminResponse is string && data.adminResponse.size() <= 1500 &&
+        isValidId(data.authorId) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAspirationPii(data) {
+      return data.keys().hasAll([
+          'aspirationId', 'authorId', 'email', 'phone', 'memberIdCode', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'aspirationId', 'authorId', 'email', 'phone', 'memberIdCode', 'createdAt'
+        ]) &&
+        isValidId(data.aspirationId) &&
+        isValidId(data.authorId) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 30 &&
+        data.memberIdCode is string && data.memberIdCode.size() <= 50 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidAnalyticsDaily(data) {
+      return data.keys().hasAll([
+          'dateKey', 'label', 'visitors', 'pageViews', 'mobileUsers', 'desktopUsers',
+          'berandaViews', 'profilViews', 'programViews', 'galeriViews',
+          'beritaViews', 'aspirasiViews', 'ownerScope', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'dateKey', 'label', 'visitors', 'pageViews', 'mobileUsers', 'desktopUsers',
+          'berandaViews', 'profilViews', 'programViews', 'galeriViews',
+          'beritaViews', 'aspirasiViews', 'ownerScope', 'updatedAt'
+        ]) &&
+        data.dateKey is string && data.dateKey.size() >= 8 && data.dateKey.size() <= 20 &&
+        data.dateKey.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.label is string && data.label.size() >= 2 && data.label.size() <= 30 &&
+        data.visitors is int && data.visitors >= 0 && data.visitors <= 10000000 &&
+        data.pageViews is int && data.pageViews >= 0 && data.pageViews <= 50000000 &&
+        data.mobileUsers is int && data.mobileUsers >= 0 && data.mobileUsers <= 10000000 &&
+        data.desktopUsers is int && data.desktopUsers >= 0 && data.desktopUsers <= 10000000 &&
+        data.berandaViews is int && data.berandaViews >= 0 && data.berandaViews <= 10000000 &&
+        data.profilViews is int && data.profilViews >= 0 && data.profilViews <= 10000000 &&
+        data.programViews is int && data.programViews >= 0 && data.programViews <= 10000000 &&
+        data.galeriViews is int && data.galeriViews >= 0 && data.galeriViews <= 10000000 &&
+        data.beritaViews is int && data.beritaViews >= 0 && data.beritaViews <= 10000000 &&
+        data.aspirasiViews is int && data.aspirasiViews >= 0 && data.aspirasiViews <= 10000000 &&
+        data.ownerScope is string && data.ownerScope.size() <= 20 &&
+        data.ownerScope == 'p2uwm_analytics' &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll([
+          'actorUid', 'actorEmail', 'action', 'targetCollection',
+          'targetId', 'summary', 'severity', 'scope', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'actorUid', 'actorEmail', 'action', 'targetCollection',
+          'targetId', 'summary', 'severity', 'scope', 'createdAt'
+        ]) &&
+        isValidId(data.actorUid) &&
+        data.actorEmail is string && data.actorEmail.size() >= 3 && data.actorEmail.size() <= 160 &&
+        data.action is string && data.action.size() <= 25 &&
+        data.action in ['CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'SECURITY_CHECK', 'SEED_DATA'] &&
+        data.targetCollection is string && data.targetCollection.size() >= 2 && data.targetCollection.size() <= 60 &&
+        data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 160 &&
+        data.targetId.matches('^[a-zA-Z0-9_.@+\\-]+$') &&
+        data.summary is string && data.summary.size() >= 5 && data.summary.size() <= 300 &&
+        data.severity is string && data.severity.size() <= 15 &&
+        data.severity in ['INFO', 'WARNING', 'CRITICAL'] &&
+        data.scope is string && data.scope.size() <= 20 && data.scope == 'p2uwm_audit' &&
+        data.createdAt is timestamp;
+    }
+
+    // =========================================================================
+    // 1. /admins/{adminUid} - Legacy & UID-based Delegated RBAC Registry
+    // =========================================================================
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (
+        isBootstrappedAdmin() ||
+        (isVerifiedUser() && request.auth.uid == adminUid)
+      );
+      allow list: if isBootstrappedAdmin() && existing().addedBy == request.auth.uid;
+      allow create: if isBootstrappedAdmin() &&
+        isValidId(adminUid) &&
+        isValidAdminRole(incoming()) &&
+        incoming().uid == adminUid &&
+        incoming().addedBy == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isBootstrappedAdmin() && isValidId(adminUid);
+    }
+
+    // =========================================================================
+    // 1B. /registered_accounts/{emailKey} - Whitelisted Login Account Directory
+    // =========================================================================
+    match /registered_accounts/{emailKey} {
+      allow get: if isValidEmailKey(emailKey) && (
+        isBootstrappedAdmin() ||
+        (
+          isVerifiedUser() &&
+          request.auth.token.email is string &&
+          request.auth.token.email.lower() == emailKey
+        )
+      );
+      allow list: if isBootstrappedAdmin() && existing().scope == 'p2uwm_auth';
+      allow create: if isBootstrappedAdmin() &&
+        isValidEmailKey(emailKey) &&
+        isValidRegisteredAccount(incoming()) &&
+        incoming().email == emailKey &&
+        incoming().addedBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isBootstrappedAdmin() &&
+        isValidRegisteredAccount(incoming()) &&
+        isValidEmailKey(emailKey) &&
+        incoming().email == existing().email &&
+        incoming().addedBy == existing().addedBy &&
+        incoming().scope == existing().scope &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'role', 'roleTitle', 'active', 'updatedAt'
+        ]);
+      allow delete: if isBootstrappedAdmin() && isValidEmailKey(emailKey);
+    }
+
+    // =========================================================================
+    // 2. /site_settings/{settingId} - Singleton Organization Identity
+    // =========================================================================
+    match /site_settings/{settingId} {
+      allow get: if settingId == 'main';
+      allow list: if false;
+      allow create: if isVerifiedUser() &&
+        settingId == 'main' &&
+        isValidSiteSetting(incoming()) &&
+        incoming().updatedBy == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidSiteSetting(incoming()) &&
+        settingId == 'main' &&
+        incoming().updatedBy == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        isAdmin() &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'orgName', 'orgShortName', 'tagline', 'locationText', 'vision',
+          'missionList', 'historyText', 'chairmanName', 'chairmanTitle',
+          'chairmanQuote', 'totalMembers', 'totalPonds', 'activeBlocks',
+          'updatedBy', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 3. /board_members/{memberId} - Central Executive Structure
+    // =========================================================================
+    match /board_members/{memberId} {
+      allow get: if isValidId(memberId) && (
+        resource == null ||
+        existing().status == 'published' ||
+        isAdmin()
+      );
+      allow list: if existing().status == 'published' || (
+        isVerifiedUser() && (
+          existing().authorId == request.auth.uid ||
+          isBootstrappedAdmin()
+        )
+      );
+      allow create: if isVerifiedUser() &&
+        isValidId(memberId) &&
+        isValidBoardMember(incoming()) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidBoardMember(incoming()) &&
+        isValidId(memberId) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().authorId == existing().authorId &&
+        incoming().updatedAt == request.time &&
+        isAdmin() &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'position', 'division', 'bio', 'orderIndex',
+          'photoKey', 'status', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(memberId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 4. /programs/{programId} - 5 Strategic Divisions
+    // =========================================================================
+    match /programs/{programId} {
+      allow get: if isValidId(programId) && (
+        resource == null ||
+        existing().status == 'published' ||
+        isAdmin()
+      );
+      allow list: if existing().status == 'published' || (
+        isVerifiedUser() && (
+          existing().authorId == request.auth.uid ||
+          isBootstrappedAdmin()
+        )
+      );
+      allow create: if isVerifiedUser() &&
+        isValidId(programId) &&
+        isValidWorkProgram(incoming()) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidWorkProgram(incoming()) &&
+        isValidId(programId) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().authorId == existing().authorId &&
+        incoming().updatedAt == request.time &&
+        isAdmin() &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'code', 'title', 'fieldCategory', 'summary', 'details', 'highlights',
+          'progressPercent', 'targetMetric', 'imageKey', 'orderIndex',
+          'status', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(programId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 5. /gallery_items/{itemId} - Visual Infrastructure & Pond Gallery
+    // =========================================================================
+    match /gallery_items/{itemId} {
+      allow get: if isValidId(itemId) && (
+        resource == null ||
+        existing().status == 'published' ||
+        isAdmin()
+      );
+      allow list: if existing().status == 'published' || (
+        isVerifiedUser() && (
+          existing().authorId == request.auth.uid ||
+          isBootstrappedAdmin()
+        )
+      );
+      allow create: if isVerifiedUser() &&
+        isValidId(itemId) &&
+        isValidGalleryItem(incoming()) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidGalleryItem(incoming()) &&
+        isValidId(itemId) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().authorId == existing().authorId &&
+        incoming().updatedAt == request.time &&
+        isAdmin() &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'caption', 'category', 'locationBlock', 'eventDate',
+          'imageUrl', 'status', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(itemId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 6. /articles/{articleId} - News, Activities & Announcements
+    // =========================================================================
+    match /articles/{articleId} {
+      allow get: if isValidId(articleId) && (
+        resource == null ||
+        existing().status == 'published' ||
+        isAdmin()
+      );
+      allow list: if existing().status == 'published' || (
+        isVerifiedUser() && (
+          existing().authorId == request.auth.uid ||
+          isBootstrappedAdmin()
+        )
+      );
+      allow create: if isVerifiedUser() &&
+        isValidId(articleId) &&
+        isValidNewsArticle(incoming()) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidNewsArticle(incoming()) &&
+        isValidId(articleId) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().authorId == existing().authorId &&
+        incoming().updatedAt == request.time &&
+        isAdmin() &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'excerpt', 'content', 'category', 'authorName',
+          'publishDate', 'readMinutes', 'imageUrl', 'featured',
+          'status', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(articleId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 7. /aspirations/{aspirationId} - Operational Member Aspirations (Non-PII)
+    // =========================================================================
+    match /aspirations/{aspirationId} {
+      allow get: if isValidId(aspirationId) && isRegisteredUser() && (
+        existing().authorId == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isVerifiedUser() && (
+        existing().authorId == request.auth.uid ||
+        isBootstrappedAdmin()
+      );
+      allow create: if isVerifiedUser() &&
+        isValidId(aspirationId) &&
+        isValidAspiration(incoming()) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().status == 'Diajukan' &&
+        incoming().adminResponse == '' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isRegisteredUser() &&
+        existsAfter(/databases/$(database)/documents/aspirations_pii/$(aspirationId));
+      allow update: if isVerifiedUser() &&
+        isValidAspiration(incoming()) &&
+        isValidId(aspirationId) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().authorId == existing().authorId &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Registered author edits message before review (Terminal state locked)
+          (
+            isRegisteredUser() &&
+            existing().authorId == request.auth.uid &&
+            existing().status == 'Diajukan' &&
+            incoming().status == 'Diajukan' &&
+            incoming().adminResponse == existing().adminResponse &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'pondBlock', 'urgency', 'subject', 'message', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Admin reviews, responds, or updates status (includes terminal override)
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'adminResponse', 'urgency', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(aspirationId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 8. /aspirations_pii/{aspirationId} - Isolated Sensitive Contact Vault
+    // =========================================================================
+    match /aspirations_pii/{aspirationId} {
+      allow get: if isValidId(aspirationId) && isRegisteredUser() && (
+        existing().authorId == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if false;
+      allow create: if isVerifiedUser() &&
+        isValidId(aspirationId) &&
+        isValidAspirationPii(incoming()) &&
+        incoming().aspirationId == aspirationId &&
+        incoming().authorId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        isRegisteredUser() &&
+        existsAfter(/databases/$(database)/documents/aspirations/$(aspirationId));
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(aspirationId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 9. /analytics_daily/{dateKey} - Real-Time Visitor & Section Telemetry
+    // =========================================================================
+    match /analytics_daily/{dateKey} {
+      allow get: if isValidId(dateKey) && isRegisteredUser();
+      allow list: if isBootstrappedAdmin() && existing().ownerScope == 'p2uwm_analytics';
+      allow create: if isVerifiedUser() &&
+        isValidId(dateKey) &&
+        isValidAnalyticsDaily(incoming()) &&
+        incoming().dateKey == dateKey &&
+        incoming().updatedAt == request.time &&
+        isRegisteredUser() && (
+          isAdmin() ||
+          (
+            incoming().visitors <= 1 &&
+            incoming().pageViews <= 1 &&
+            incoming().mobileUsers <= 1 &&
+            incoming().desktopUsers <= 1 &&
+            incoming().berandaViews <= 1 &&
+            incoming().profilViews <= 1 &&
+            incoming().programViews <= 1 &&
+            incoming().galeriViews <= 1 &&
+            incoming().beritaViews <= 1 &&
+            incoming().aspirasiViews <= 1
+          )
+        );
+      allow update: if isVerifiedUser() &&
+        isValidAnalyticsDaily(incoming()) &&
+        isValidId(dateKey) &&
+        incoming().dateKey == existing().dateKey &&
+        incoming().ownerScope == existing().ownerScope &&
+        incoming().updatedAt == request.time &&
+        isRegisteredUser() && (
+          // Action 1: Registered user increments real-time view counters by at most +1
+          (
+            incoming().label == existing().label &&
+            isStepIncrement(incoming().visitors, existing().visitors) &&
+            isStepIncrement(incoming().pageViews, existing().pageViews) &&
+            isStepIncrement(incoming().mobileUsers, existing().mobileUsers) &&
+            isStepIncrement(incoming().desktopUsers, existing().desktopUsers) &&
+            isStepIncrement(incoming().berandaViews, existing().berandaViews) &&
+            isStepIncrement(incoming().profilViews, existing().profilViews) &&
+            isStepIncrement(incoming().programViews, existing().programViews) &&
+            isStepIncrement(incoming().galeriViews, existing().galeriViews) &&
+            isStepIncrement(incoming().beritaViews, existing().beritaViews) &&
+            isStepIncrement(incoming().aspirasiViews, existing().aspirasiViews) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'visitors', 'pageViews', 'mobileUsers', 'desktopUsers',
+              'berandaViews', 'profilViews', 'programViews', 'galeriViews',
+              'beritaViews', 'aspirasiViews', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Admin seeding or calibration
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'label', 'visitors', 'pageViews', 'mobileUsers', 'desktopUsers',
+              'berandaViews', 'profilViews', 'programViews', 'galeriViews',
+              'beritaViews', 'aspirasiViews', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(dateKey) && isAdmin();
+    }
+
+    // =========================================================================
+    // 10. /audit_logs/{logId} - Immutable Tamper-Proof Security Audit Trail
+    // =========================================================================
+    match /audit_logs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isBootstrappedAdmin() && existing().scope == 'p2uwm_audit';
+      allow create: if isVerifiedUser() &&
+        isValidId(logId) &&
+        isValidAuditLog(incoming()) &&
+        incoming().actorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
